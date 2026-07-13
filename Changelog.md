@@ -36,7 +36,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
   de Random Forest (MAE 0.837, R² 0.780) a XGBoost (MAE 0.818, R² 0.743)
   — ver `docs/conclusiones.md` para el análisis honesto de este
   trade-off (mejora leve de MAE, con un costo de R² en un panel pequeño).
-- `run_all.py` se convirtió en `pipelines/pipeline_ml.py` (11 pasos en
+- `run_all.py` se convirtió en `pipelines/pipeline_ml.py` (12 pasos en
   vez de 8), con imports actualizados a la nueva ubicación de los
   scripts en `src/`.
 - La app de escritorio y el dashboard web (antes en la raíz del

@@ -80,7 +80,7 @@ Dos formas de consumir el resultado, generadas por el mismo pipeline:
   contenido, sin necesidad de instalar Python, abrible en cualquier
   navegador.
 
-`pipelines/pipeline_ml.py` corre las 11 etapas de punta a punta con un
+`pipelines/pipeline_ml.py` corre las 12 etapas de punta a punta con un
 solo comando (ver `README.md`).
 
 ## 6. Monitoreo (calidad continua)

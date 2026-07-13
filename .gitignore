@@ -1,0 +1,30 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Tests
+.pytest_cache/
+
+# Empaquetado de la app de escritorio (build_exe.bat)
+build/
+dist/
+*.spec
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Credenciales / configuración local (si algún día se agregan)
+.env
+*.env.local

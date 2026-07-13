@@ -1,0 +1,51 @@
+{
+  "results": {
+    "NaiveRandomWalk": {
+      "cv_mae_mean": null,
+      "cv_mae_std": null,
+      "test_mae": 1.7549897599999997,
+      "test_rmse": 1.988911370499188,
+      "test_r2": 0.2031593083297114
+    },
+    "LinearRegression": {
+      "cv_mae_mean": 9.33714578687584,
+      "cv_mae_std": 10.654940050513762,
+      "test_mae": 11.316107687746007,
+      "test_rmse": 11.911601759476818,
+      "test_r2": -27.581233829168877
+    },
+    "Ridge": {
+      "cv_mae_mean": 1.7664825961912016,
+      "cv_mae_std": 1.6136969437805866,
+      "test_mae": 5.596784981736238,
+      "test_rmse": 5.825781720017668,
+      "test_r2": -5.836739928440045
+    },
+    "RandomForest": {
+      "cv_mae_mean": 1.102286472088295,
+      "cv_mae_std": 0.4030449292569686,
+      "test_mae": 0.861387778846272,
+      "test_rmse": 1.0947635528798878,
+      "test_r2": 0.7585755207786173
+    },
+    "GradientBoosting": {
+      "cv_mae_mean": 1.3701561864146172,
+      "cv_mae_std": 0.564995439622169,
+      "test_mae": 0.8617855612190516,
+      "test_rmse": 1.20675985699209,
+      "test_r2": 0.7066525263672188
+    },
+    "XGBoost": {
+      "cv_mae_mean": 1.1661077158418254,
+      "cv_mae_std": 0.5677815518694306,
+      "test_mae": 0.8183234041024778,
+      "test_rmse": 1.1305649956417074,
+      "test_r2": 0.7425269888474939
+    }
+  },
+  "best_model": "XGBoost",
+  "n_train": 117,
+  "n_test": 25,
+  "test_cutoff_year": 2023,
+  "target": "cambio semestral de TD (reconstruido a nivel)"
+}

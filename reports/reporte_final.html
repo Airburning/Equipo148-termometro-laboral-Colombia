@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modelo ML — Desempleo Regional Colombia</title>
+<style>
+  .viz-root {
+    --surface-1:      #fcfcfb;
+    --surface-page:    #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --good:           #0ca30c;
+    --critical:       #d03b3b;
+    --series-1: #2a78d6; /* Caribe */
+    --series-2: #1baf7a; /* Central */
+    --series-3: #eda100; /* Oriental */
+    --series-4: #008300; /* Orinoquía/Amazonía/Insular */
+    --series-5: #4a3aa7; /* Pacífica */
+    --series-6: #e34948; /* extra / naive */
+  }
+  @media (prefers-color-scheme: dark) {
+    .viz-root {
+      --surface-1:      #1a1a19;
+      --surface-page:    #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --good:           #0ca30c;
+      --critical:       #e66767;
+      --series-1: #3987e5;
+      --series-2: #199e70;
+      --series-3: #c98500;
+      --series-4: #008300;
+      --series-5: #9085e9;
+      --series-6: #e66767;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    --surface-1:      #1a1a19;
+    --surface-page:    #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-2: #199e70; --series-3: #c98500;
+    --series-4: #008300; --series-5: #9085e9; --series-6: #e66767;
+  }
+  :root[data-theme="light"] .viz-root {
+    --surface-1:      #fcfcfb;
+    --surface-page:    #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --series-1: #2a78d6; --series-2: #1baf7a; --series-3: #eda100;
+    --series-4: #008300; --series-5: #4a3aa7; --series-6: #e34948;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .viz-root {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--surface-page);
+    color: var(--text-primary);
+    padding: 32px 20px 80px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .subtitle { color: var(--text-secondary); font-size: 14.5px; margin: 0 0 4px; line-height: 1.5; }
+  .meta { color: var(--text-muted); font-size: 12.5px; margin: 0 0 28px; }
+  h2 { font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+  .section-desc { color: var(--text-secondary); font-size: 13.5px; margin: 0 0 14px; line-height: 1.5; }
+  section { margin-bottom: 40px; }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 40px; }
+  .kpi { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; }
+  .kpi .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .kpi .value { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  .kpi .value.good { color: var(--good); }
+  .kpi .sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 14px 2px 0; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .legend-line { width: 14px; height: 2px; border-radius: 1px; flex: none; }
+
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .grid-line { stroke: var(--grid); stroke-width: 1; }
+  .axis-line { stroke: var(--baseline); stroke-width: 1; }
+  .axis-label { fill: var(--text-muted); font-size: 10.5px; }
+  .mark-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .mark-dot { stroke: var(--surface-1); stroke-width: 1.5; }
+  .bar { rx: 3; }
+  .bar-label { font-size: 11.5px; fill: var(--text-secondary); }
+  .bar-value { font-size: 11.5px; fill: var(--text-primary); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 10;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; color: var(--text-primary);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15); white-space: nowrap; opacity: 0; transition: opacity 0.1s;
+  }
+  .tooltip .t-title { font-weight: 700; margin-bottom: 3px; }
+  .tooltip .t-row { color: var(--text-secondary); display: flex; gap: 8px; justify-content: space-between; }
+  .chart-holder { position: relative; }
+  .crosshair { stroke: var(--baseline); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0; }
+
+  table.dtable { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.dtable th, table.dtable td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  table.dtable th:first-child, table.dtable td:first-child { text-align: left; font-variant-numeric: normal; }
+  table.dtable th { color: var(--text-muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.02em; }
+  table.dtable tr.highlight td { font-weight: 700; color: var(--text-primary); }
+  table.dtable tr.highlight { background: color-mix(in srgb, var(--good) 8%, transparent); }
+  details.tablewrap { margin-top: 14px; }
+  details.tablewrap summary { cursor: pointer; font-size: 12.5px; color: var(--text-secondary); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .two-col { grid-template-columns: 1fr; } }
+
+  .callout {
+    border-left: 3px solid var(--series-3); background: color-mix(in srgb, var(--series-3) 8%, var(--surface-1));
+    border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.55;
+  }
+  ul.notes { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+  code { background: var(--grid); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  .legend-item[data-region] { cursor: pointer; user-select: none; padding: 2px 6px; border-radius: 5px; transition: opacity 0.15s, background 0.15s; }
+  .legend-item[data-region]:hover { background: var(--grid); }
+  .legend-item[data-region].dim { opacity: 0.35; }
+  .legend-item[data-region]:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .legend-hint { font-size: 11.5px; color: var(--text-muted); margin: 6px 2px 0; }
+</style>
+</head>
+<body>
+
+<div class="viz-root">
+<div class="wrap">
+
+  <h1>Predicción de la tasa de desempleo regional en Colombia</h1>
+  <p class="subtitle">Modelo de machine learning que combina el panel laboral regional del DANE (GEIH), los anexos trimestrales de informalidad laboral (GEIH-ANEXOS) y el índice de informalidad empresarial (IMIE) para proyectar la Tasa de Desocupación (TD) del siguiente semestre, por región.</p>
+  <p class="meta" id="meta-line">Generado el — · Fuente: DANE, "base de datos" del usuario</p>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>1. Histórico de la tasa de desocupación por región (2010–2025)</h2>
+    <p class="section-desc">Serie semestral. La caída sostenida y el pico de 2020 (pandemia) explican por qué el nivel de TD no es estacionario — el modelo predice el <em>cambio</em> semestral, no el nivel directamente.</p>
+    <div class="card">
+      <div class="chart-holder" id="chart-historico"></div>
+      <div class="legend" id="legend-historico"></div>
+      <p class="legend-hint">Clic en una región de la leyenda para mostrarla/ocultarla · pasa el mouse sobre una región para resaltarla.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Comparación de modelos</h2>
+    <p class="section-desc">Error absoluto medio (MAE) en el set de prueba (2023–2025, semestres no vistos en entrenamiento), comparado contra un baseline ingenuo que asume "sin cambio" respecto al semestre anterior.</p>
+    <div class="card">
+      <div class="chart-holder" id="chart-modelos"></div>
+      <details class="tablewrap">
+        <summary>Ver tabla de métricas completa</summary>
+        <table class="dtable" id="table-modelos"></table>
+      </details>
+    </div>
+  </section>
+
+  <div class="two-col">
+    <section>
+      <h2>3. Real vs. predicho — Random Forest</h2>
+      <p class="section-desc">Cada punto es una región-semestre del set de prueba. Sobre la diagonal = el modelo sobreestima el desempleo.</p>
+      <div class="card">
+        <div class="chart-holder" id="chart-scatter"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Variables más influyentes</h2>
+      <p class="section-desc">Importancia de features del modelo ganador (Random Forest).</p>
+      <div class="card">
+        <div class="chart-holder" id="chart-importance"></div>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <h2>5. Proyección del próximo semestre por región</h2>
+    <p class="section-desc" id="forecast-desc"></p>
+    <div class="card">
+      <div class="chart-holder" id="chart-forecast"></div>
+      <div class="legend" id="legend-forecast"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Metodología y limitaciones</h2>
+    <div class="callout">
+      <strong>Cómo se construyó:</strong> se integraron las 6 fuentes en un panel región × semestre (2010–2025, 5 regiones). El target es el cambio semestral de la Tasa de Desocupación (no el nivel), porque los modelos de árboles no extrapolan bien tendencias no estacionarias — el nivel se reconstruye sumando el cambio predicho al valor actual. Se probaron 5 modelos (regresión lineal, Ridge, Random Forest, Gradient Boosting, XGBoost) con validación cruzada temporal (<code>TimeSeriesSplit</code>) y una partición final por fecha de corte (train &lt; 2023, test ≥ 2023) para evitar fuga de información hacia el pasado.
+    </div>
+    <ul class="notes">
+      <li><strong>Informalidad laboral nacional</strong> (GEIH-ANEXOS) solo está disponible desde 2021 en trimestres móviles; se agregó a semestres promediando las ventanas correspondientes, y se extendió hacia atrás/adelante (forward/backward fill) para cubrir 2010–2020 y 2026.</li>
+      <li><strong>Informalidad empresarial</strong> (IMIE) es anual y cubre 2019–2024 por sector; se usó el promedio simple entre sectores como proxy nacional (no hay fila de total nacional con datos en la hoja fuente), extendido igual que el anterior.</li>
+      <li><strong>Informalidad de micronegocios</strong> (EMICRON) es un solo año nacional (2024, ~88% sin registro en Cámara de Comercio); se extendió igual que las anteriores.</li>
+      <li><strong>Dispersión regional de TD</strong> (Mercado laboral por departamentos) mide qué tan desigual es el desempleo entre los departamentos de una región; cubre 23 de 33 departamentos, así que Orinoquía/Amazonía/Insular (sin cobertura directa) se rellena con el promedio de las otras regiones ese año.</li>
+      <li><strong>Informalidad laboral real por región</strong> (microdato GEIH persona-mes) sí varía por región, a diferencia de la serie nacional de GEIH-ANEXOS — pero solo cubre 2022 en adelante, y su nivel (~70-88%) no es comparable al de GEIH-ANEXOS (~55%) porque incluye zona rural en todos los departamentos, no solo las 13-23 áreas metropolitanas.</li>
+      <li>Las variables de informalidad laboral/empresarial/micronegocios nacionales capturan el ciclo económico general, no diferencias regionales; para eso están las 2 fuentes de nivel región/departamento agregadas arriba.</li>
+      <li>El panel tiene 160 filas (5 regiones × 32 semestres); tras generar lags y quitar nulos quedan 117 para entrenar y 25 para prueba — un tamaño modesto para ML, razonable para una serie oficial semestral pero que limita qué tan "profundos" pueden ser los modelos sin sobreajustar, y también cuánto ayudan features nuevas frente al riesgo de sobreajuste.</li>
+      <li>La regresión lineal y Ridge rinden mal frente a los modelos de árboles por la alta colinealidad entre las variables de rezago (lags) y promedios móviles — es un patrón esperado, no un error del pipeline.</li>
+    </ul>
+  </section>
+
+</div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script id="report-data" type="application/json">{"regions": ["Caribe", "Central", "Oriental", "Orinoquía/Amazonía/Insular", "Pacífica"], "historico": {"Caribe": [{"t": 2010.0, "anio": 2010, "periodo": "I", "td": 10.913388}, {"t": 2010.5, "anio": 2010, "periodo": "II", "td": 9.916165}, {"t": 2011.0, "anio": 2011, "periodo": "I", "td": 10.519253}, {"t": 2011.5, "anio": 2011, "periodo": "II", "td": 8.743085}, {"t": 2012.0, "anio": 2012, "periodo": "I", "td": 9.557138}, {"t": 2012.5, "anio": 2012, "periodo": "II", "td": 8.401809}, {"t": 2013.0, "anio": 2013, "periodo": "I", "td": 8.735772}, {"t": 2013.5, "anio": 2013, "periodo": "II", "td": 7.101759}, {"t": 2014.0, "anio": 2014, "periodo": "I", "td": 7.531736}, {"t": 2014.5, "anio": 2014, "periodo": "II", "td": 7.168015}, {"t": 2015.0, "anio": 2015, "periodo": "I", "td": 7.499588}, {"t": 2015.5, "anio": 2015, "periodo": "II", "td": 7.310088}, {"t": 2016.0, "anio": 2016, "periodo": "I", "td": 8.874703}, {"t": 2016.5, "anio": 2016, "periodo": "II", "td": 8.02951}, {"t": 2017.0, "anio": 2017, "periodo": "I", "td": 8.18108}, {"t": 2017.5, "anio": 2017, "periodo": "II", "td": 7.436418}, {"t": 2018.0, "anio": 2018, "periodo": "I", "td": 7.172073}, {"t": 2018.5, "anio": 2018, "periodo": "II", "td": 7.283075}, {"t": 2019.0, "anio": 2019, "periodo": "I", "td": 8.215912}, {"t": 2019.5, "anio": 2019, "periodo": "II", "td": 8.36505}, {"t": 2020.0, "anio": 2020, "periodo": "I", "td": 11.987131}, {"t": 2020.5, "anio": 2020, "periodo": "II", "td": 11.894941}, {"t": 2021.0, "anio": 2021, "periodo": "I", "td": 11.838445}, {"t": 2021.5, "anio": 2021, "periodo": "II", "td": 10.800673}, {"t": 2022.0, "anio": 2022, "periodo": "I", "td": 11.764141}, {"t": 2022.5, "anio": 2022, "periodo": "II", "td": 10.944072}, {"t": 2023.0, "anio": 2023, "periodo": "I", "td": 11.058541}, {"t": 2023.5, "anio": 2023, "periodo": "II", "td": 9.43831}, {"t": 2024.0, "anio": 2024, "periodo": "I", "td": 11.236105}, {"t": 2024.5, "anio": 2024, "periodo": "II", "td": 9.625211}, {"t": 2025.0, "anio": 2025, "periodo": "I", "td": 10.48922}, {"t": 2025.5, "anio": 2025, "periodo": "II", "td": 9.174676}], "Central": [{"t": 2010.0, "anio": 2010, "periodo": "I", "td": 14.425565}, {"t": 2010.5, "anio": 2010, "periodo": "II", "td": 12.595843}, {"t": 2011.0, "anio": 2011, "periodo": "I", "td": 13.483289}, {"t": 2011.5, "anio": 2011, "periodo": "II", "td": 11.593043}, {"t": 2012.0, "anio": 2012, "periodo": "I", "td": 12.414836}, {"t": 2012.5, "anio": 2012, "periodo": "II", "td": 11.100412}, {"t": 2013.0, "anio": 2013, "periodo": "I", "td": 11.797809}, {"t": 2013.5, "anio": 2013, "periodo": "II", "td": 9.548844}, {"t": 2014.0, "anio": 2014, "periodo": "I", "td": 10.787754}, {"t": 2014.5, "anio": 2014, "periodo": "II", "td": 9.624044}, {"t": 2015.0, "anio": 2015, "periodo": "I", "td": 10.805853}, {"t": 2015.5, "anio": 2015, "periodo": "II", "td": 9.64253}, {"t": 2016.0, "anio": 2016, "periodo": "I", "td": 10.883367}, {"t": 2016.5, "anio": 2016, "periodo": "II", "td": 9.971735}, {"t": 2017.0, "anio": 2017, "periodo": "I", "td": 10.875166}, {"t": 2017.5, "anio": 2017, "periodo": "II", "td": 10.029106}, {"t": 2018.0, "anio": 2018, "periodo": "I", "td": 12.159651}, {"t": 2018.5, "anio": 2018, "periodo": "II", "td": 10.718098}, {"t": 2019.0, "anio": 2019, "periodo": "I", "td": 12.602385}, {"t": 2019.5, "anio": 2019, "periodo": "II", "td": 11.872056}, {"t": 2020.0, "anio": 2020, "periodo": "I", "td": 19.265419}, {"t": 2020.5, "anio": 2020, "periodo": "II", "td": 17.353492}, {"t": 2021.0, "anio": 2021, "periodo": "I", "td": 15.353383}, {"t": 2021.5, "anio": 2021, "periodo": "II", "td": 11.790035}, {"t": 2022.0, "anio": 2022, "periodo": "I", "td": 11.368779}, {"t": 2022.5, "anio": 2022, "periodo": "II", "td": 10.090329}, {"t": 2023.0, "anio": 2023, "periodo": "I", "td": 10.133102}, {"t": 2023.5, "anio": 2023, "periodo": "II", "td": 8.816437}, {"t": 2024.0, "anio": 2024, "periodo": "I", "td": 10.976063}, {"t": 2024.5, "anio": 2024, "periodo": "II", "td": 8.662034}, {"t": 2025.0, "anio": 2025, "periodo": "I", "td": 8.983054}, {"t": 2025.5, "anio": 2025, "periodo": "II", "td": 7.365309}], "Oriental": [{"t": 2010.0, "anio": 2010, "periodo": "I", "td": 10.715579}, {"t": 2010.5, "anio": 2010, "periodo": "II", "td": 9.647104}, {"t": 2011.0, "anio": 2011, "periodo": "I", "td": 10.027221}, {"t": 2011.5, "anio": 2011, "periodo": "II", "td": 8.68923}, {"t": 2012.0, "anio": 2012, "periodo": "I", "td": 10.539917}, {"t": 2012.5, "anio": 2012, "periodo": "II", "td": 8.604257}, {"t": 2013.0, "anio": 2013, "periodo": "I", "td": 10.144989}, {"t": 2013.5, "anio": 2013, "periodo": "II", "td": 8.587488}, {"t": 2014.0, "anio": 2014, "periodo": "I", "td": 9.831703}, {"t": 2014.5, "anio": 2014, "periodo": "II", "td": 8.028128}, {"t": 2015.0, "anio": 2015, "periodo": "I", "td": 9.229308}, {"t": 2015.5, "anio": 2015, "periodo": "II", "td": 7.924369}, {"t": 2016.0, "anio": 2016, "periodo": "I", "td": 10.188887}, {"t": 2016.5, "anio": 2016, "periodo": "II", "td": 8.155671}, {"t": 2017.0, "anio": 2017, "periodo": "I", "td": 9.736569}, {"t": 2017.5, "anio": 2017, "periodo": "II", "td": 8.956528}, {"t": 2018.0, "anio": 2018, "periodo": "I", "td": 10.522736}, {"t": 2018.5, "anio": 2018, "periodo": "II", "td": 10.16613}, {"t": 2019.0, "anio": 2019, "periodo": "I", "td": 12.673067}, {"t": 2019.5, "anio": 2019, "periodo": "II", "td": 11.382449}, {"t": 2020.0, "anio": 2020, "periodo": "I", "td": 18.243416}, {"t": 2020.5, "anio": 2020, "periodo": "II", "td": 17.022449}, {"t": 2021.0, "anio": 2021, "periodo": "I", "td": 17.441462}, {"t": 2021.5, "anio": 2021, "periodo": "II", "td": 12.690256}, {"t": 2022.0, "anio": 2022, "periodo": "I", "td": 13.144903}, {"t": 2022.5, "anio": 2022, "periodo": "II", "td": 9.995914}, {"t": 2023.0, "anio": 2023, "periodo": "I", "td": 11.223604}, {"t": 2023.5, "anio": 2023, "periodo": "II", "td": 9.598615}, {"t": 2024.0, "anio": 2024, "periodo": "I", "td": 11.756906}, {"t": 2024.5, "anio": 2024, "periodo": "II", "td": 9.330109}, {"t": 2025.0, "anio": 2025, "periodo": "I", "td": 10.47158}, {"t": 2025.5, "anio": 2025, "periodo": "II", "td": 8.938926}], "Orinoquía/Amazonía/Insular": [{"t": 2010.0, "anio": 2010, "periodo": "I", "td": 0.0}, {"t": 2010.5, "anio": 2010, "periodo": "II", "td": 0.0}, {"t": 2011.0, "anio": 2011, "periodo": "I", "td": 0.0}, {"t": 2011.5, "anio": 2011, "periodo": "II", "td": 0.0}, {"t": 2012.0, "anio": 2012, "periodo": "I", "td": 0.0}, {"t": 2012.5, "anio": 2012, "periodo": "II", "td": 0.0}, {"t": 2013.0, "anio": 2013, "periodo": "I", "td": 0.0}, {"t": 2013.5, "anio": 2013, "periodo": "II", "td": 0.0}, {"t": 2014.0, "anio": 2014, "periodo": "I", "td": 9.70854}, {"t": 2014.5, "anio": 2014, "periodo": "II", "td": 8.352729}, {"t": 2015.0, "anio": 2015, "periodo": "I", "td": 9.952272}, {"t": 2015.5, "anio": 2015, "periodo": "II", "td": 8.757476}, {"t": 2016.0, "anio": 2016, "periodo": "I", "td": 12.206952}, {"t": 2016.5, "anio": 2016, "periodo": "II", "td": 11.043511}, {"t": 2017.0, "anio": 2017, "periodo": "I", "td": 13.252272}, {"t": 2017.5, "anio": 2017, "periodo": "II", "td": 12.797971}, {"t": 2018.0, "anio": 2018, "periodo": "I", "td": 13.494262}, {"t": 2018.5, "anio": 2018, "periodo": "II", "td": 13.711826}, {"t": 2019.0, "anio": 2019, "periodo": "I", "td": 14.919764}, {"t": 2019.5, "anio": 2019, "periodo": "II", "td": 13.808843}, {"t": 2020.0, "anio": 2020, "periodo": "I", "td": 20.486005}, {"t": 2020.5, "anio": 2020, "periodo": "II", "td": 20.944565}, {"t": 2021.0, "anio": 2021, "periodo": "I", "td": 18.973558}, {"t": 2021.5, "anio": 2021, "periodo": "II", "td": 16.1031}, {"t": 2022.0, "anio": 2022, "periodo": "I", "td": 15.798725}, {"t": 2022.5, "anio": 2022, "periodo": "II", "td": 14.519933}, {"t": 2023.0, "anio": 2023, "periodo": "I", "td": 16.170399}, {"t": 2023.5, "anio": 2023, "periodo": "II", "td": 13.566724}, {"t": 2024.0, "anio": 2024, "periodo": "I", "td": 17.430939}, {"t": 2024.5, "anio": 2024, "periodo": "II", "td": 13.840697}, {"t": 2025.0, "anio": 2025, "periodo": "I", "td": 14.165686}, {"t": 2025.5, "anio": 2025, "periodo": "II", "td": 10.529056}], "Pacífica": [{"t": 2010.0, "anio": 2010, "periodo": "I", "td": 14.768325}, {"t": 2010.5, "anio": 2010, "periodo": "II", "td": 14.429215}, {"t": 2011.0, "anio": 2011, "periodo": "I", "td": 14.810769}, {"t": 2011.5, "anio": 2011, "periodo": "II", "td": 12.919566}, {"t": 2012.0, "anio": 2012, "periodo": "I", "td": 13.490545}, {"t": 2012.5, "anio": 2012, "periodo": "II", "td": 12.544321}, {"t": 2013.0, "anio": 2013, "periodo": "I", "td": 13.186848}, {"t": 2013.5, "anio": 2013, "periodo": "II", "td": 11.830925}, {"t": 2014.0, "anio": 2014, "periodo": "I", "td": 12.701937}, {"t": 2014.5, "anio": 2014, "periodo": "II", "td": 10.89406}, {"t": 2015.0, "anio": 2015, "periodo": "I", "td": 11.740266}, {"t": 2015.5, "anio": 2015, "periodo": "II", "td": 10.048815}, {"t": 2016.0, "anio": 2016, "periodo": "I", "td": 10.831074}, {"t": 2016.5, "anio": 2016, "periodo": "II", "td": 9.34974}, {"t": 2017.0, "anio": 2017, "periodo": "I", "td": 10.263071}, {"t": 2017.5, "anio": 2017, "periodo": "II", "td": 9.740469}, {"t": 2018.0, "anio": 2018, "periodo": "I", "td": 10.377225}, {"t": 2018.5, "anio": 2018, "periodo": "II", "td": 9.80763}, {"t": 2019.0, "anio": 2019, "periodo": "I", "td": 11.169664}, {"t": 2019.5, "anio": 2019, "periodo": "II", "td": 10.764995}, {"t": 2020.0, "anio": 2020, "periodo": "I", "td": 17.046983}, {"t": 2020.5, "anio": 2020, "periodo": "II", "td": 15.843378}, {"t": 2021.0, "anio": 2021, "periodo": "I", "td": 14.761249}, {"t": 2021.5, "anio": 2021, "periodo": "II", "td": 11.787084}, {"t": 2022.0, "anio": 2022, "periodo": "I", "td": 11.452573}, {"t": 2022.5, "anio": 2022, "periodo": "II", "td": 10.285394}, {"t": 2023.0, "anio": 2023, "periodo": "I", "td": 10.868498}, {"t": 2023.5, "anio": 2023, "periodo": "II", "td": 9.542275}, {"t": 2024.0, "anio": 2024, "periodo": "I", "td": 11.012064}, {"t": 2024.5, "anio": 2024, "periodo": "II", "td": 9.121215}, {"t": 2025.0, "anio": 2025, "periodo": "I", "td": 8.848085}, {"t": 2025.5, "anio": 2025, "periodo": "II", "td": 7.773843}]}, "metrics_table": [{"model": "NaiveRandomWalk", "label": "Ingenuo (sin cambio)", "cv_mae_mean": null, "cv_mae_std": null, "test_mae": 1.7549897599999997, "test_rmse": 1.988911370499188, "test_r2": 0.2031593083297114}, {"model": "LinearRegression", "label": "Regresión lineal", "cv_mae_mean": 9.33714578687584, "cv_mae_std": 10.654940050513762, "test_mae": 11.316107687746007, "test_rmse": 11.911601759476818, "test_r2": -27.581233829168877}, {"model": "Ridge", "label": "Ridge", "cv_mae_mean": 1.7664825961912016, "cv_mae_std": 1.6136969437805866, "test_mae": 5.596784981736238, "test_rmse": 5.825781720017668, "test_r2": -5.836739928440045}, {"model": "RandomForest", "label": "Random Forest", "cv_mae_mean": 1.102286472088295, "cv_mae_std": 0.4030449292569686, "test_mae": 0.861387778846272, "test_rmse": 1.0947635528798878, "test_r2": 0.7585755207786173}, {"model": "GradientBoosting", "label": "Gradient Boosting", "cv_mae_mean": 1.3701561864146172, "cv_mae_std": 0.564995439622169, "test_mae": 0.8617855612190516, "test_rmse": 1.20675985699209, "test_r2": 0.7066525263672188}, {"model": "XGBoost", "label": "XGBoost", "cv_mae_mean": 1.1661077158418254, "cv_mae_std": 0.5677815518694306, "test_mae": 0.8183234041024778, "test_rmse": 1.1305649956417074, "test_r2": 0.7425269888474939}], "best_model": "XGBoost", "best_model_label": "XGBoost", "test_scatter": [{"region": "Caribe", "anio": 2023, "periodo": "I", "t": 2023.0, "y_true": 9.43831, "pred_best": 9.746568143478394, "pred_NaiveRandomWalk": 11.058541}, {"region": "Caribe", "anio": 2023, "periodo": "II", "t": 2023.5, "y_true": 11.236105, "pred_best": 9.915413292942048, "pred_NaiveRandomWalk": 9.43831}, {"region": "Caribe", "anio": 2024, "periodo": "I", "t": 2024.0, "y_true": 9.625211, "pred_best": 9.967415486793518, "pred_NaiveRandomWalk": 11.236105}, {"region": "Caribe", "anio": 2024, "periodo": "II", "t": 2024.5, "y_true": 10.48922, "pred_best": 10.484419106994627, "pred_NaiveRandomWalk": 9.625211}, {"region": "Caribe", "anio": 2025, "periodo": "I", "t": 2025.0, "y_true": 9.174676, "pred_best": 9.281155682296752, "pred_NaiveRandomWalk": 10.48922}, {"region": "Central", "anio": 2023, "periodo": "I", "t": 2023.0, "y_true": 8.816437, "pred_best": 8.511149585487365, "pred_NaiveRandomWalk": 10.133102}, {"region": "Central", "anio": 2023, "periodo": "II", "t": 2023.5, "y_true": 10.976063, "pred_best": 10.41745018359375, "pred_NaiveRandomWalk": 8.816437}, {"region": "Central", "anio": 2024, "periodo": "I", "t": 2024.0, "y_true": 8.662034, "pred_best": 10.120182501113892, "pred_NaiveRandomWalk": 10.976063}, {"region": "Central", "anio": 2024, "periodo": "II", "t": 2024.5, "y_true": 8.983054, "pred_best": 10.44460042818451, "pred_NaiveRandomWalk": 8.662034}, {"region": "Central", "anio": 2025, "periodo": "I", "t": 2025.0, "y_true": 7.365309, "pred_best": 7.420574742416381, "pred_NaiveRandomWalk": 8.983054}, {"region": "Oriental", "anio": 2023, "periodo": "I", "t": 2023.0, "y_true": 9.598615, "pred_best": 9.724279797462463, "pred_NaiveRandomWalk": 11.223604}, {"region": "Oriental", "anio": 2023, "periodo": "II", "t": 2023.5, "y_true": 11.756906, "pred_best": 11.304238149871829, "pred_NaiveRandomWalk": 9.598615}, {"region": "Oriental", "anio": 2024, "periodo": "I", "t": 2024.0, "y_true": 9.330109, "pred_best": 10.359765258651734, "pred_NaiveRandomWalk": 11.756906}, {"region": "Oriental", "anio": 2024, "periodo": "II", "t": 2024.5, "y_true": 10.47158, "pred_best": 11.026493072303772, "pred_NaiveRandomWalk": 9.330109}, {"region": "Oriental", "anio": 2025, "periodo": "I", "t": 2025.0, "y_true": 8.938926, "pred_best": 9.004672379570007, "pred_NaiveRandomWalk": 10.47158}, {"region": "Orinoquía/Amazonía/Insular", "anio": 2023, "periodo": "I", "t": 2023.0, "y_true": 13.566724, "pred_best": 14.894873668502807, "pred_NaiveRandomWalk": 16.170399}, {"region": "Orinoquía/Amazonía/Insular", "anio": 2023, "periodo": "II", "t": 2023.5, "y_true": 17.430939, "pred_best": 14.362583932899476, "pred_NaiveRandomWalk": 13.566724}, {"region": "Orinoquía/Amazonía/Insular", "anio": 2024, "periodo": "I", "t": 2024.0, "y_true": 13.840697, "pred_best": 15.965994756568907, "pred_NaiveRandomWalk": 17.430939}, {"region": "Orinoquía/Amazonía/Insular", "anio": 2024, "periodo": "II", "t": 2024.5, "y_true": 14.165686, "pred_best": 14.541179964515688, "pred_NaiveRandomWalk": 13.840697}, {"region": "Orinoquía/Amazonía/Insular", "anio": 2025, "periodo": "I", "t": 2025.0, "y_true": 10.529056, "pred_best": 12.674883235107425, "pred_NaiveRandomWalk": 14.165686}, {"region": "Pacífica", "anio": 2023, "periodo": "I", "t": 2023.0, "y_true": 9.542275, "pred_best": 9.586494120452882, "pred_NaiveRandomWalk": 10.868498}, {"region": "Pacífica", "anio": 2023, "periodo": "II", "t": 2023.5, "y_true": 11.012064, "pred_best": 10.407248485469818, "pred_NaiveRandomWalk": 9.542275}, {"region": "Pacífica", "anio": 2024, "periodo": "I", "t": 2024.0, "y_true": 9.121215, "pred_best": 9.949010392059328, "pred_NaiveRandomWalk": 11.012064}, {"region": "Pacífica", "anio": 2024, "periodo": "II", "t": 2024.5, "y_true": 8.848085, "pred_best": 10.303382887687684, "pred_NaiveRandomWalk": 9.121215}, {"region": "Pacífica", "anio": 2025, "periodo": "I", "t": 2025.0, "y_true": 7.773843, "pred_best": 8.106732322654723, "pred_NaiveRandomWalk": 8.848085}], "importance": [{"label": "Semestre = II (estacionalidad)", "importance": 0.20317104}, {"label": "Informalidad empresarial (nacional)", "importance": 0.07392294}, {"label": "Participación prom. móvil", "importance": 0.05993815}, {"label": "TD semestre anterior", "importance": 0.0578297}, {"label": "Tasa ocupación anterior", "importance": 0.052410435}, {"label": "Informalidad laboral real región (sem. anterior)", "importance": 0.043951616}, {"label": "Dispersión de TD entre departamentos (región)", "importance": 0.043934066}, {"label": "Tendencia (año)", "importance": 0.043433}, {"label": "Participación laboral anterior", "importance": 0.04239002}, {"label": "TD hace 2 semestres", "importance": 0.042000934}], "forecast": [{"region": "Caribe", "anio_base": 2025, "periodo_base": "II", "td_base": 9.174676, "anio_forecast": 2026, "periodo_forecast": "I", "td_forecast": 10.431430875183104}, {"region": "Central", "anio_base": 2025, "periodo_base": "II", "td_base": 7.365309, "anio_forecast": 2026, "periodo_forecast": "I", "td_forecast": 8.582556724533081}, {"region": "Oriental", "anio_base": 2025, "periodo_base": "II", "td_base": 8.938926, "anio_forecast": 2026, "periodo_forecast": "I", "td_forecast": 10.100863713623047}, {"region": "Orinoquía/Amazonía/Insular", "anio_base": 2025, "periodo_base": "II", "td_base": 10.529056, "anio_forecast": 2026, "periodo_forecast": "I", "td_forecast": 11.249434756523131}, {"region": "Pacífica", "anio_base": 2025, "periodo_base": "II", "td_base": 7.773843, "anio_forecast": 2026, "periodo_forecast": "I", "td_forecast": 9.637615392272949}], "n_train": 117, "n_test": 25, "test_cutoff_year": 2023, "generated_at": "13 de julio de 2026"}</script>
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('report-data').textContent);
+  const root = document.querySelector('.viz-root');
+  const css = getComputedStyle(root);
+  const cvar = (name) => css.getPropertyValue(name).trim();
+  const SERIES = [cvar('--series-1'), cvar('--series-2'), cvar('--series-3'), cvar('--series-4'), cvar('--series-5'), cvar('--series-6')];
+  const tooltip = document.getElementById('tooltip');
+
+  document.getElementById('meta-line').textContent =
+    `Generado el ${DATA.generated_at || '—'} · Fuente: DANE (GEIH, GEIH-ANEXOS, IMIE) · archivo autocontenido, funciona sin conexión a internet`;
+
+  function showTooltip(x, y, html) {
+    tooltip.innerHTML = html;
+    tooltip.style.left = x + 12 + 'px';
+    tooltip.style.top = y + 12 + 'px';
+    tooltip.style.opacity = 1;
+  }
+  function hideTooltip() { tooltip.style.opacity = 0; }
+  function pagePos(evt) { return { x: evt.pageX, y: evt.pageY }; }
+
+  const fmt1 = (v) => (v === null || v === undefined) ? '—' : v.toFixed(1);
+  const fmt2 = (v) => (v === null || v === undefined) ? '—' : v.toFixed(2);
+  const fmt3 = (v) => (v === null || v === undefined) ? '—' : v.toFixed(3);
+
+  // ---------- KPI tiles ----------
+  const best = DATA.metrics_table.find(m => m.model === DATA.best_model);
+  const naive = DATA.metrics_table.find(m => m.model === 'NaiveRandomWalk');
+  const kpis = [
+    { label: 'Mejor modelo', value: DATA.best_model_label, sub: `de ${DATA.metrics_table.length} modelos evaluados` },
+    { label: 'Error medio (MAE)', value: fmt2(best.test_mae) + ' pts', sub: `vs. ${fmt2(naive.test_mae)} pts del baseline ingenuo`, good: true },
+    { label: 'R² en test', value: fmt2(best.test_r2), sub: `baseline ingenuo: ${fmt2(naive.test_r2)}` },
+    { label: 'Datos usados', value: `${DATA.n_train + DATA.n_test}`, sub: `${DATA.n_train} entren. · ${DATA.n_test} prueba (≥ ${DATA.test_cutoff_year})` },
+  ];
+  document.getElementById('kpis').innerHTML = kpis.map(k => `
+    <div class="kpi">
+      <div class="label">${k.label}</div>
+      <div class="value ${k.good ? 'good' : ''}">${k.value}</div>
+      <div class="sub">${k.sub}</div>
+    </div>`).join('');
+
+  // ================= Chart 1: historical line chart =================
+  (function () {
+    const holder = document.getElementById('chart-historico');
+    const W = 1000, H = 320, M = { top: 16, right: 16, bottom: 30, left: 40 };
+    const iw = W - M.left - M.right, ih = H - M.top - M.bottom;
+    const hidden = new Set();
+
+    const allPts = DATA.regions.flatMap(r => DATA.historico[r]);
+    const tMin = Math.min(...allPts.map(p => p.t)), tMax = Math.max(...allPts.map(p => p.t));
+    const vMin = 0, vMax = Math.ceil(Math.max(...allPts.map(p => p.td)) / 5) * 5;
+
+    const x = (t) => M.left + (t - tMin) / (tMax - tMin) * iw;
+    const y = (v) => M.top + ih - (v - vMin) / (vMax - vMin) * ih;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}">`;
+    // gridlines (y)
+    const ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+      const v = vMin + (vMax - vMin) * i / ySteps;
+      svg += `<line class="grid-line" x1="${M.left}" x2="${W - M.right}" y1="${y(v)}" y2="${y(v)}" />`;
+      svg += `<text class="axis-label" x="${M.left - 8}" y="${y(v) + 3}" text-anchor="end">${v.toFixed(0)}%</text>`;
+    }
+    // x axis (years, every 2)
+    for (let yr = Math.ceil(tMin); yr <= tMax; yr += 2) {
+      svg += `<text class="axis-label" x="${x(yr)}" y="${H - 8}" text-anchor="middle">${yr}</text>`;
+    }
+    svg += `<line class="axis-line" x1="${M.left}" x2="${W - M.right}" y1="${M.top + ih}" y2="${M.top + ih}" />`;
+
+    DATA.regions.forEach((reg, i) => {
+      const pts = DATA.historico[reg];
+      const d = pts.map((p, j) => `${j === 0 ? 'M' : 'L'} ${x(p.t).toFixed(1)} ${y(p.td).toFixed(1)}`).join(' ');
+      svg += `<path class="mark-line" d="${d}" stroke="${SERIES[i]}" data-region="${reg}" />`;
+    });
+    svg += `<line class="crosshair" id="hist-crosshair" x1="0" x2="0" y1="${M.top}" y2="${M.top + ih}" />`;
+    svg += `<rect id="hist-capture" x="${M.left}" y="${M.top}" width="${iw}" height="${ih}" fill="transparent" />`;
+    svg += `</svg>`;
+    holder.innerHTML = svg;
+
+    const svgEl = holder.querySelector('svg');
+    const capture = holder.querySelector('#hist-capture');
+    const crosshair = holder.querySelector('#hist-crosshair');
+    capture.addEventListener('mousemove', (evt) => {
+      const rect = svgEl.getBoundingClientRect();
+      const scale = W / rect.width;
+      const mx = (evt.clientX - rect.left) * scale;
+      const t = tMin + (mx - M.left) / iw * (tMax - tMin);
+      // snap to nearest sample
+      let nearest = null, best_d = Infinity;
+      DATA.regions.forEach(reg => {
+        DATA.historico[reg].forEach(p => {
+          const dd = Math.abs(p.t - t);
+          if (dd < best_d) { best_d = dd; nearest = p; }
+        });
+      });
+      if (!nearest) return;
+      crosshair.setAttribute('x1', x(nearest.t)); crosshair.setAttribute('x2', x(nearest.t));
+      crosshair.style.opacity = 1;
+      const rows = DATA.regions.filter(reg => !hidden.has(reg)).map((reg) => {
+        const i = DATA.regions.indexOf(reg);
+        const p = DATA.historico[reg].find(p => p.t === nearest.t);
+        return p ? `<div class="t-row"><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${SERIES[i]};margin-right:5px;"></span>${reg}</span><span>${fmt1(p.td)}%</span></div>` : '';
+      }).join('');
+      showTooltip(evt.pageX, evt.pageY, `<div class="t-title">${nearest.anio} · Semestre ${nearest.periodo}</div>${rows || '<div class="t-row">(todas las regiones ocultas)</div>'}`);
+    });
+    capture.addEventListener('mouseleave', () => { hideTooltip(); crosshair.style.opacity = 0; });
+
+    document.getElementById('legend-historico').innerHTML = DATA.regions.map((reg, i) => `
+      <div class="legend-item" data-region="${reg}" role="button" tabindex="0" title="Clic para mostrar/ocultar ${reg}">
+        <span class="legend-line" style="background:${SERIES[i]}"></span>${reg}
+      </div>
+    `).join('');
+
+    // ---- leyenda interactiva: clic = mostrar/ocultar región, hover = resaltar ----
+    const paths = {};
+    DATA.regions.forEach(reg => { paths[reg] = svgEl.querySelector('path[data-region="' + reg + '"]'); });
+    const legendEls = holder.parentElement.querySelectorAll('#legend-historico .legend-item');
+
+    function applyHidden() {
+      DATA.regions.forEach(reg => {
+        if (paths[reg]) paths[reg].style.display = hidden.has(reg) ? 'none' : '';
+      });
+      legendEls.forEach(el => el.classList.toggle('dim', hidden.has(el.dataset.region)));
+    }
+    function toggle(reg) {
+      if (hidden.has(reg)) hidden.delete(reg); else hidden.add(reg);
+      applyHidden();
+    }
+    legendEls.forEach(el => {
+      const reg = el.dataset.region;
+      el.addEventListener('click', () => toggle(reg));
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(reg); } });
+      el.addEventListener('mouseenter', () => {
+        if (hidden.has(reg)) return;
+        Object.entries(paths).forEach(([r, p]) => {
+          if (!p || hidden.has(r)) return;
+          p.style.strokeWidth = r === reg ? '3.5' : '2';
+          p.style.opacity = r === reg ? '1' : '0.2';
+        });
+      });
+      el.addEventListener('mouseleave', () => {
+        Object.values(paths).forEach(p => { if (p) { p.style.strokeWidth = '2'; p.style.opacity = '1'; } });
+      });
+    });
+  })();
+
+  // ================= Chart 2: model comparison bar =================
+  (function () {
+    const holder = document.getElementById('chart-modelos');
+    const rows = [...DATA.metrics_table].sort((a, b) => a.test_mae - b.test_mae);
+    const W = 1000, rowH = 40, M = { top: 6, right: 70, bottom: 6, left: 190 };
+    const H = rows.length * rowH + M.top + M.bottom;
+    const iw = W - M.left - M.right;
+    const maxV = Math.max(...rows.map(r => r.test_mae)) * 1.08;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}">`;
+    rows.forEach((r, i) => {
+      const yc = M.top + i * rowH + rowH / 2;
+      const barW = r.test_mae / maxV * iw;
+      const isBest = r.model === DATA.best_model;
+      const isNaive = r.model === 'NaiveRandomWalk';
+      const color = isBest ? cvar('--good') : (isNaive ? cvar('--text-muted') : cvar('--series-1'));
+      svg += `<text class="bar-label" x="${M.left - 10}" y="${yc + 4}" text-anchor="end">${r.label}</text>`;
+      svg += `<rect class="bar" data-model="${r.model}" x="${M.left}" y="${yc - 9}" width="${barW}" height="18" rx="4" fill="${color}" opacity="0.9" />`;
+      svg += `<text class="bar-value" x="${M.left + barW + 8}" y="${yc + 4}">${fmt2(r.test_mae)} pts</text>`;
+    });
+    svg += `</svg>`;
+    holder.innerHTML = svg;
+
+    holder.querySelectorAll('rect.bar').forEach(rectEl => {
+      rectEl.addEventListener('mousemove', (evt) => {
+        const m = rows.find(r => r.model === rectEl.dataset.model);
+        showTooltip(evt.pageX, evt.pageY, `
+          <div class="t-title">${m.label}</div>
+          <div class="t-row"><span>MAE (test)</span><span>${fmt2(m.test_mae)} pts</span></div>
+          <div class="t-row"><span>RMSE (test)</span><span>${fmt2(m.test_rmse)} pts</span></div>
+          <div class="t-row"><span>R² (test)</span><span>${fmt2(m.test_r2)}</span></div>
+          ${m.cv_mae_mean !== null ? `<div class="t-row"><span>MAE (CV temporal)</span><span>${fmt2(m.cv_mae_mean)} ± ${fmt2(m.cv_mae_std)}</span></div>` : ''}
+        `);
+      });
+      rectEl.addEventListener('mouseleave', hideTooltip);
+    });
+
+    document.getElementById('table-modelos').innerHTML = `
+      <thead><tr><th>Modelo</th><th>MAE test</th><th>RMSE test</th><th>R² test</th><th>MAE CV (temporal)</th></tr></thead>
+      <tbody>${rows.map(r => `
+        <tr class="${r.model === DATA.best_model ? 'highlight' : ''}">
+          <td>${r.label}</td><td>${fmt2(r.test_mae)}</td><td>${fmt2(r.test_rmse)}</td><td>${fmt2(r.test_r2)}</td>
+          <td>${r.cv_mae_mean !== null ? fmt2(r.cv_mae_mean) + ' ± ' + fmt2(r.cv_mae_std) : '—'}</td>
+        </tr>`).join('')}</tbody>`;
+  })();
+
+  // ================= Chart 3: scatter actual vs predicted =================
+  (function () {
+    const holder = document.getElementById('chart-scatter');
+    const W = 480, H = 360, M = { top: 16, right: 16, bottom: 34, left: 40 };
+    const iw = W - M.left - M.right, ih = H - M.top - M.bottom;
+    const pts = DATA.test_scatter;
+    const allV = pts.flatMap(p => [p.y_true, p.pred_best]);
+    const vMin = Math.floor(Math.min(...allV) / 2) * 2, vMax = Math.ceil(Math.max(...allV) / 2) * 2;
+    const x = (v) => M.left + (v - vMin) / (vMax - vMin) * iw;
+    const y = (v) => M.top + ih - (v - vMin) / (vMax - vMin) * ih;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}">`;
+    const steps = 5;
+    for (let i = 0; i <= steps; i++) {
+      const v = vMin + (vMax - vMin) * i / steps;
+      svg += `<line class="grid-line" x1="${M.left}" x2="${W - M.right}" y1="${y(v)}" y2="${y(v)}" />`;
+      svg += `<text class="axis-label" x="${M.left - 8}" y="${y(v) + 3}" text-anchor="end">${v.toFixed(0)}</text>`;
+      svg += `<text class="axis-label" x="${x(v)}" y="${H - 14}" text-anchor="middle">${v.toFixed(0)}</text>`;
+    }
+    svg += `<line class="axis-line" x1="${M.left}" x2="${W - M.right}" y1="${M.top + ih}" y2="${M.top + ih}" />`;
+    svg += `<line class="axis-line" x1="${M.left}" x2="${M.left}" y1="${M.top}" y2="${M.top + ih}" />`;
+    // diagonal y=x
+    svg += `<line x1="${x(vMin)}" y1="${y(vMin)}" x2="${x(vMax)}" y2="${y(vMax)}" stroke="${cvar('--baseline')}" stroke-width="1" stroke-dasharray="4 3" />`;
+    svg += `<text class="axis-label" x="${W - M.right - 55}" y="${H - 2}" text-anchor="middle">TD real (%)</text>`;
+
+    pts.forEach((p, i) => {
+      const ri = DATA.regions.indexOf(p.region);
+      svg += `<circle class="mark-dot" data-i="${i}" cx="${x(p.y_true)}" cy="${y(p.pred_best)}" r="5" fill="${SERIES[ri]}" opacity="0.85" />`;
+    });
+    svg += `</svg>`;
+    holder.innerHTML = svg;
+    holder.querySelectorAll('circle').forEach(c => {
+      c.addEventListener('mousemove', (evt) => {
+        const p = pts[+c.dataset.i];
+        showTooltip(evt.pageX, evt.pageY, `
+          <div class="t-title">${p.region} · ${p.anio}-${p.periodo}</div>
+          <div class="t-row"><span>Real</span><span>${fmt2(p.y_true)}%</span></div>
+          <div class="t-row"><span>Predicho (${DATA.best_model_label})</span><span>${fmt2(p.pred_best)}%</span></div>
+          <div class="t-row"><span>Predicho (ingenuo)</span><span>${fmt2(p.pred_NaiveRandomWalk)}%</span></div>
+        `);
+      });
+      c.addEventListener('mouseleave', hideTooltip);
+    });
+  })();
+
+  // ================= Chart 4: feature importance =================
+  (function () {
+    const holder = document.getElementById('chart-importance');
+    const rows = DATA.importance;
+    const W = 480, rowH = 30, M = { top: 6, right: 46, bottom: 6, left: 190 };
+    const H = rows.length * rowH + M.top + M.bottom;
+    const iw = W - M.left - M.right;
+    const maxV = Math.max(...rows.map(r => r.importance)) * 1.1;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}">`;
+    rows.forEach((r, i) => {
+      const yc = M.top + i * rowH + rowH / 2;
+      const barW = r.importance / maxV * iw;
+      svg += `<text class="bar-label" x="${M.left - 10}" y="${yc + 4}" text-anchor="end">${r.label}</text>`;
+      svg += `<rect class="bar" x="${M.left}" y="${yc - 7}" width="${barW}" height="14" rx="3" fill="${cvar('--series-1')}" opacity="0.85" />`;
+      svg += `<text class="bar-value" x="${M.left + barW + 6}" y="${yc + 4}" style="font-weight:400;font-size:10.5px;">${(r.importance * 100).toFixed(1)}%</text>`;
+    });
+    svg += `</svg>`;
+    holder.innerHTML = svg;
+  })();
+
+  // ================= Chart 5: forecast grouped bar =================
+  (function () {
+    const holder = document.getElementById('chart-forecast');
+    const rows = DATA.forecast;
+    document.getElementById('forecast-desc').textContent =
+      `Proyección de ${rows[0].periodo_base} ${rows[0].anio_base} → ${rows[0].periodo_forecast} ${rows[0].anio_forecast} usando ${DATA.best_model_label}, a partir del último dato disponible por región.`;
+
+    const W = 1000, groupH = 56, M = { top: 10, right: 20, bottom: 10, left: 190 };
+    const H = rows.length * groupH + M.top + M.bottom;
+    const iw = W - M.left - M.right;
+    const maxV = Math.max(...rows.flatMap(r => [r.td_base, r.td_forecast])) * 1.15;
+    const colorBase = cvar('--text-muted'), colorFc = cvar('--series-1');
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}">`;
+    rows.forEach((r, i) => {
+      const gy = M.top + i * groupH;
+      const barBaseW = r.td_base / maxV * iw;
+      const barFcW = r.td_forecast / maxV * iw;
+      svg += `<text class="bar-label" x="${M.left - 10}" y="${gy + groupH / 2 + 4}" text-anchor="end" style="font-weight:600;">${r.region}</text>`;
+      svg += `<rect class="bar" x="${M.left}" y="${gy + 4}" width="${barBaseW}" height="16" rx="3" fill="${colorBase}" opacity="0.7" />`;
+      svg += `<text class="bar-value" x="${M.left + barBaseW + 6}" y="${gy + 16}" style="font-weight:400;">${fmt1(r.td_base)}%</text>`;
+      svg += `<rect class="bar" x="${M.left}" y="${gy + 24}" width="${barFcW}" height="16" rx="3" fill="${colorFc}" opacity="0.95" />`;
+      svg += `<text class="bar-value" x="${M.left + barFcW + 6}" y="${gy + 36}">${fmt1(r.td_forecast)}%</text>`;
+    });
+    svg += `</svg>`;
+    holder.innerHTML = svg;
+
+    document.getElementById('legend-forecast').innerHTML = `
+      <div class="legend-item"><span class="legend-swatch" style="background:${colorBase}"></span>TD actual (último semestre observado)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:${colorFc}"></span>TD proyectada (siguiente semestre)</div>
+    `;
+  })();
+
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📢 NOTA SOBRE ACCESO A DATOS ORIGINALES (RAW DATA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Estimado evaluador / usuario:
+
+Debido al gran volumen de los datos originales sin procesar (Raw Data) que tomamos como base para este proyecto, y con el fin de evitar sobrecargar el peso del repositorio, hemos dispuesto una carpeta externa en Google Drive para almacenar estas fuentes crudas.
+
+Tenga en cuenta que este es el insumo inicial. Todo el proceso posterior de limpieza, transformación y estructuración de esta data se realiza dentro de las carpetas de este repositorio.
+
+Para consultar o descargar los datasets originales en su estado crudo, copie y pegue el siguiente enlace en su navegador:
+
+👉 ENLACE GOOGLE DRIVE (RAW DATA):
+   [ https://drive.google.com/drive/folders/1u7Yflkip-RQTpHkin4T0q5T035hEG-XP?usp=sharing ]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
